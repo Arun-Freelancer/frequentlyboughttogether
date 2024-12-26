@@ -1,0 +1,205 @@
+{{ 'fbt-section.css' | asset_url | stylesheet_tag }}
+
+{% assign total_compare_at_price = 0 %}
+{% assign total_price = 0 %}
+
+{% assign main_product_compare_at_price = product.compare_at_price | default: product.price %}
+{% assign total_compare_at_price = total_compare_at_price | plus: main_product_compare_at_price %}
+{% assign total_price = total_price | plus: product.price %}
+
+{% for recommended_product in product.metafields.custom.cross_selling.value %}
+  {% assign recommended_compare_at_price = recommended_product.compare_at_price | default: recommended_product.price %}
+  {% assign total_compare_at_price = total_compare_at_price | plus: recommended_compare_at_price %}
+  {% assign total_price = total_price | plus: recommended_product.price %}
+{% endfor %}
+{% if product.metafields.custom.cross_selling.value != blank %}
+  {% liquid
+    assign selling_plan_id = ''
+    assign selling_group_number = 2
+    if product.selling_plan_groups
+      for group in product.selling_plan_groups
+        for selling_plan in group.selling_plans
+          if forloop.index == selling_group_number
+            assign selling_plan_id = selling_plan.id
+            break
+          endif
+        endfor
+      endfor
+    endif
+  %}
+  <section class="nt_upsell-section" id="section-{{ section.id }}">
+    <div class="container">
+      <div class="nt_upsell-wrapper">
+        {%- if section.settings.title != blank -%}
+          <div class="section--header text-container ">
+            {%- if section.settings.title != blank -%}
+              <h2 class="subheading bundle-subheading">{{ section.settings.title }}</h2>
+            {%- endif -%}
+          </div>
+        {%- endif -%}
+        <div class="nt_upsell-bundles_container">
+          {% assign current_product_meta = product.metafields.custom.cross_selling.value %}
+          <div class="nt_upsell-bundles_container-wrapper">
+            <div class="nt_upsell-bundles-items">
+              <ul class="bs_grid-product-inner">
+                <li
+                  class="related-product"
+                >
+                  <input
+                    type="checkbox"
+                    class="add-related-product add-btns"
+                    checked="checked"
+                    data-variant-id="{{ product.first_available_variant.id }}"
+                    data-product-id="{{ product.id }}"
+                    {% if selling_plan_id != blank %}
+                      data-selling-plan="{{ selling_plan_id }}"
+                    {% endif %}
+                    data-price="{{- product.price | money_with_currency -}}"
+                    data-compare-price="{{- product.compare_at_price | money_with_currency -}}"
+                    id="checked"
+                  >
+                  <label class="related-product-inner" for="checked">
+                    <div class="related-product-image">
+                      <img src="{{ product.featured_image | img_url:"original" }}">
+                    </div>
+                    <div class="content_bundle">
+                      <div class="nt_bundle-heading">
+                        <h3>{{ product.title }}</h3>
+                      </div>
+
+                      <div class="product-item-meta__price-list-container">
+                        <div class="bundle-product-prices-wrapper-prices">
+                          {% if product.compare_at_price > product.price %}
+                            <span class="bundle-compare-price was-price theme-money">
+                              {{- product.compare_at_price | money -}}
+                            </span>
+                          {% endif %}
+                          <span class="bundle-product-price current-price theme-money">
+                            {{- product.price | money -}}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </label>
+                </li>
+                {% render 'plus-icon_bundle' %}
+                {% for recommended_product in product.metafields.custom.cross_selling.value %}
+                  {% if recommended_product.available %}
+                    {% liquid
+                      assign selling_plan_id = ''
+                      assign selling_group_number = 2
+                      if recommended_product.selling_plan_groups
+                        for group in recommended_product.selling_plan_groups
+                          for selling_plan in group.selling_plans
+                            if forloop.index == selling_group_number
+                              assign selling_plan_id = selling_plan.id
+                              break
+                            endif
+                          endfor
+                        endfor
+                      endif
+                    %}
+                    <li
+                      class="related-product"
+                    >
+                      <input
+                        type="checkbox"
+                        class="add-related-product add-btns"
+                        checked="checked"
+                        data-variant-id="{{ recommended_product.first_available_variant.id }}"
+                        data-product-id="{{ recommended_product.id }}"
+                        {% if selling_plan_id != blank %}
+                          data-selling-plan="{{ selling_plan_id }}"
+                        {% endif %}
+                        data-price="{{- recommended_product.price | money_with_currency -}}"
+                        data-compare-price="{{- recommended_product.compare_at_price | money_with_currency -}}"
+                        id="checked--{{ forloop.index }}"
+                      >
+                      <label class="related-product-inner" for="checked--{{ forloop.index }}">
+                        <div class="related-product-image">
+                          <img
+                            src="{{ recommended_product.featured_image.src | img_url:"original" }}"
+                            width=""
+                            height=""
+                          >
+                        </div>
+                        <div class="content_bundle">
+                          <div class="nt_bundle-heading">
+                            <h3>{{ recommended_product.title }}</h3>
+                          </div>
+
+                          <div class="product-item-meta__price-list-container">
+                            <div class="bundle-product-prices-wrapper-prices">
+                              {% if product.compare_at_price > product.price %}
+                                <span class="bundle-compare-price was-price theme-money">
+                                  {{- recommended_product.compare_at_price | money -}}
+                                </span>
+                              {% endif %}
+                              <span class="bundle-product-price current-price theme-money">
+                                {{- recommended_product.price | money -}}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </label>
+                    </li>
+                    {% render 'plus-icon_bundle' %}
+                  {% endif %}
+                {% endfor %}
+              </ul>
+            </div>
+            <div class="nt_upsell-btn add-bundle-to-cart">
+              <div class="total-price">
+                <span class="nt_upsell-saving"
+                  >Du sparst
+                  <span id="total-saving-price">
+                    {% assign savings = total_compare_at_price | minus: total_price %}
+                    {{ savings | divided_by: 100 | round: 0 }}€
+                  </span></span
+                >
+                <div class="nt-atc_container">
+                  <span class="nt_bundle-label">Gesamtpreis:</span>
+                  <span class="bundle-product-prices-wrapper-prices">
+                    <span class="bundle-compare-price was-price theme-money" id="total-compare-price">
+                      {{- total_compare_at_price | money -}}
+                    </span>
+                    <span class="bundle-product-price current-price theme-money" id="total-price">
+                      {{- total_price | money -}}
+                    </span>
+                  </span>
+                </div>
+              </div>
+              <button id="add-bundle-to-cart">In den warenkorb</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <script src="{{ 'fbt-section.js' | asset_url }}" async></script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Bought Together",
+  "settings": [
+    {
+      "type":"image_picker",
+      "id":"image",
+      "label":"Product Image"
+    },
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Heading",
+      "default": "Your title"
+    }
+  ],
+    "presets": [
+    {
+      "name": "Bought Together"
+    }
+  ]
+
+}
+{% endschema %}
